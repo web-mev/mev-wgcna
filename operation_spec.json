@@ -1,0 +1,20 @@
+{
+    "name": "WGCNA", 
+    "description": "Performs weighted correlation network analysis on a normalized expression matrix. Note that this does analysis does not look for differences between experimental groups. Rather, it attempts to infer groups of genes based on patterns of co-expression. Outputs from this analysis can then be tested for biological enrichment by using a GO analysis, for example.",
+    "inputs": {
+        "expression": {
+            "description": "A table/matrix of normalized gene expression. Note that we cannot check that this table is normalized!",
+            "name": "Expressions:", 
+            "required": true, 
+            "spec": {
+                "attribute_type": "DataResource", 
+                "resource_types": ["MTX", "EXP_MTX"], 
+                "many": false
+            }
+        }
+    }, 
+    "outputs": {
+    }, 
+    "mode": "local_docker",
+    "workspace_operation": true
+}
