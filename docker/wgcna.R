@@ -13,12 +13,26 @@ option_list <- list(
         c('-m','--max_var_genes'),
         default=5000, # Maybe we want this by default to be bigger
         help="Max number of top most variable genes to include."
+    ),
+    make_option(
+        c('-b','--beta'),
+        type='numeric',
+        help="Beta value for setting network connectivity. If not set, will use an auto-selection."
     )
 )
 
-# Load the pre-normalized expression
-# Can be RNAseq, microarray, doesn't matter. Just normalize in WebMev, then
-# use the normalized count matrix as input.
+opt <- parse_args(OptionParser(option_list=option_list))
+
+if('beta' %in% names(opt)){
+    # if beta is given as something that can't be parsed with as.numeric,
+    # then it is assigned NA. NA will ultimately trigger the heuristic auto-detection
+    # option below
+    user_beta = as.numeric(opt$beta)
+} else {
+    user_beta = NA
+}
+
+# Load the expression data
 exprs <- read.table(
     opt$input_file,
     sep="\t",
@@ -38,33 +52,92 @@ exprs.flt <- exprs[
 # Then transpose the matrix
 wgcna_matrix <- t(exprs.flt)
 
-# Create a correlation network
-# Use biweight midcorrelation. Median based, so less sensitive to outliers.
-# Absolute value to reduce everything to positive 0-1 interpretation
-s <- abs(bicor(wgcna_matrix))
-
-# Create powers fomr 1 - 25
-powers = c(c(1:30))
+# Create powers for 1 - 30. WGCNA blocks choosing of powers over 30 anyway.
+powers = c(1:30)
 # Calculate the soft thresholds
 sft = pickSoftThreshold(wgcna_matrix, powerVector = powers, verbose = 5)
+
 # Identify the first max delta delta
 # Estimate maximum acceleration from the i+1 diff
 x <- sft$fitIndices[,1]
 y <- -sign(sft$fitIndices[,3])*sft$fitIndices[,2]
-d.first <- y[-1] - y[-length(y)]
-d.second <- d.first[-1] - d.first[-length(d.first)]
-d.strength <- d.second - d.first[-1]
 
-# Recalculate the corr matrix with exponentiation by chosen beta
-beta = which.max(d.strength) + 2 # Add two to compensate for shift
-a = s^beta
-w = 1-a
+if(is.na(user_beta)){
 
-# Munge the exprs.flt into numeric
-vec <- seq(1, length(colnames(exprs.flt)))
-exprs.flt[, vec] <- apply(exprs.flt[, vec, drop=F], 2, as.numeric)
-# Then transpose and convert to matrix
-exprs.flt <- as.matrix(t(exprs.flt))
+    # Instead of trying to calculate numerical derivatives, the code below
+    # outlines a 'voting' heuristic. In essense, we expect a plot that has a
+    # logistic-like shape and we want to pick the elbow where we get diminishing
+    # returns. To find this elbow, we calculate linear regressions using different
+    # numbers of points. Most of those lines coming from the lower and upper half 
+    # will intersect *roughly* near the elbow. We bin all those intersection points
+    # and pick the densest. This gives us an x-coordinate/beta which can be used
+    # to set the scale of the network.
+
+    # Calculate the linear fits. lh=left-hand, rh=right-hand
+    lh_fits = c()
+    rh_fits = c()
+    L = length(y)
+    for(i in 2:L){
+        xvals_lh = x[i:L]
+        yvals_lh = y[i:L]
+        xvals_rh = x[L-i:L]
+        yvals_rh = y[L-i:L]
+        tryCatch({
+            lh_f = lm(yvals_lh ~ xvals_lh)
+            rh_f = lm(yvals_rh ~ xvals_rh)
+            lh_fits = c(lh_fits, lh_f)
+            rh_fits = c(rh_fits, rh_f)
+        }, error=function(abc){
+            print(paste('Problem with i=', str(i)))
+        }
+        )
+    }
+
+    # Now that we have a bunch of fitted regression lines, find all the pairwise
+    # intersections of those lines and store them
+    intersections_x = c()
+    intersections_y = c()
+    for(i in 1:length(lh_fits)){
+        for(j in i:length(rh_fits)){
+            lc = lh_fits[i]
+            rc = rh_fits[j]
+            BL_0 = lc$coefficients[[1]]
+            BL_1 = lc$coefficients[[2]]
+            BR_0 = rc$coefficients[[1]]
+            BR_1 = rc$coefficients[[2]]
+            x0 = (BR_0 - BL_0)/(BL_1 - BR_1)
+            y0 = BL_0 + BL_1*x0
+            intersections_x = c(intersections_x, x0)
+            intersections_y = c(intersections_y, y0)
+        }
+    }
+
+    # make a dataframe so we can line-up those intersections up and remove NAs
+    intersection_df = na.omit(data.frame(x=intersections_x, y=intersections_y))
+    nbins = 20
+    xbins = seq(min(x), max(x), length.out=nbins)
+    ybins = seq(min(y), max(y), length.out=nbins)
+    cuts_x = cut(intersection_df$x, xbins)
+    cuts_y = cut(intersection_df$y, ybins)
+
+    # create an abundance table based on the binned data
+    tt = table(cuts_x, cuts_y)
+
+    # Finding the max index flattens the matrix, so we have to use 
+    # integer division +  modulus to get the actual row/col index
+    max_idx = which.max(tt)
+    row_idx = max_idx %% (dim(tt)[1])
+    col_idx = 1 + max_idx %/% (dim(tt)[1])
+
+    # double check that our indexing operation actually found the max location
+    if(tt[row_idx, col_idx] != max(tt)){
+        message('An error occurred during the auto-selection of the thresholding parameter. Try setting a manual default.')
+        quit(status=1)
+    }
+    beta = ceiling(xbins[row_idx])
+} else {
+    beta = user_beta
+}
 
 # Parameters
 # maxBlockSize:
@@ -86,10 +159,16 @@ exprs.flt <- as.matrix(t(exprs.flt))
 # nThreads: 0 = dynamically determine threading
 # verbose: 0 = silent (higher for more verbosity)
 # There are many more parameters, but this should be sufficient
+
+# Munge the wgcna matrix into numeric (in case it's an int)
+vec <- seq(1, dim(wgcna_matrix)[2])
+wgcna_matrix[, vec] <- apply(wgcna_matrix[, vec, drop=F], 2, as.numeric)
+
+
 bwnet = blockwiseModules(
-    exprs.flt, 
-    maxBlockSize = 2000,
-    corType = "bicor"
+    wgcna_matrix, 
+    maxBlockSize = 5000,
+    corType = "bicor",
     pearsonFallback = "individual",
     power = beta, 
     networkType = "signed",
@@ -103,6 +182,7 @@ bwnet = blockwiseModules(
     verbose = 0
 )
 
+save.image('results.RData')
 # Colors denotes the label / module the gene was assigned.
 # Export as JSON
-bwnet$colors
+#bwnet$colors
