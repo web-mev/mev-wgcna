@@ -1,5 +1,6 @@
 suppressMessages(suppressWarnings(library(optparse)))
 suppressMessages(suppressWarnings(library(WGCNA)))
+suppressMessages(suppressWarnings(library("rjson", character.only=T, warn.conflicts = F, quietly = T)))
 
 # Enables parallelizable calculations with WGCNA
 enableWGCNAThreads()
@@ -31,6 +32,10 @@ if('beta' %in% names(opt)){
 } else {
     user_beta = NA
 }
+
+# change the working directory to co-locate with the counts file:
+working_dir <- dirname(opt$input_file)
+setwd(working_dir)
 
 # Load the expression data
 exprs <- read.table(
@@ -87,8 +92,7 @@ if(is.na(user_beta)){
             rh_f = lm(yvals_rh ~ xvals_rh)
             lh_fits = c(lh_fits, lh_f)
             rh_fits = c(rh_fits, rh_f)
-        }, error=function(abc){
-            print(paste('Problem with i=', str(i)))
+        }, error=function(err){
         }
         )
     }
@@ -182,7 +186,36 @@ bwnet = blockwiseModules(
     verbose = 0
 )
 
-save.image('results.RData')
 # Colors denotes the label / module the gene was assigned.
 # Export as JSON
-#bwnet$colors
+modules_df = data.frame(group=bwnet$colors, gene=names(bwnet$colors))
+summary_df = aggregate(x=modules_df$gene, by=list(modules_df$group), FUN=paste, collapse=',')
+q = apply(summary_df, 1, function(r){
+            list(
+                    module=r['Group.1'][[1]],
+                    genes=r['x'][[1]]
+                )
+        }
+    )
+results_json_str <- toJSON(q)
+output_filename = 'wgcna_modules.json'
+results_json_file <- paste(working_dir, output_filename, sep='/')
+write(results_json_str, results_json_file)
+
+# save the data for the network topology so users can evaluate
+# the choice of beta
+thresholding <- list(x=x,y=y,beta=beta)
+output_filename = 'network_threshold_metadata.json'
+thresholds_json_file <- paste(working_dir, output_filename, sep='/')
+write(toJSON(thresholding), thresholds_json_file)
+# for WebMEV compatability, need to create an outputs.json file.
+json_str = paste0(
+       '{"module_results":"', 
+       results_json_file, 
+       '",',
+       '"network_connectivity_thresholds":"',
+        thresholds_json_file,
+       '"}'
+)
+output_json <- paste(working_dir, 'outputs.json', sep='/')
+write(json_str, output_json)

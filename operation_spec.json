@@ -2,7 +2,7 @@
     "name": "WGCNA", 
     "description": "Performs weighted correlation network analysis on a normalized expression matrix. Note that this does analysis does not look for differences between experimental groups. Rather, it attempts to infer groups of genes based on patterns of co-expression. Outputs from this analysis can then be tested for biological enrichment by using a GO analysis, for example. You can remove outlier samples by specifying a sample/observation set of samples you would like to keep.",
     "inputs": {
-        "expression": {
+        "expression_matrix": {
             "description": "A table/matrix of normalized gene expression. Note that we cannot check that this table is normalized!",
             "name": "Expressions:", 
             "required": true, 
@@ -11,9 +11,33 @@
                 "resource_types": ["MTX", "EXP_MTX"], 
                 "many": false
             }
+        },
+        "network_connectivity_param": {
+            "description": "A parameter that controls the connectivity of the inferred gene correlation networks. By default (if blank), this is automatically chosen based on a heuristic algorithm. However, you may choose to override this parameter if it appears the chosen point was not appropriate on the first attempt.",
+            "name": "Network connectivity parameter:", 
+            "required": false, 
+            "spec": {
+                "attribute_type": "BoundedInteger",
+                "min": 1,
+                "max": 30
+            } 
         }
     }, 
     "outputs": {
+        "module_results": {
+            "spec": {
+                "attribute_type": "DataResource", 
+                "resource_type": "JSON",
+                "many": false
+            }
+        },
+        "network_connectivity_thresholds": {
+            "spec": {
+                "attribute_type": "DataResource", 
+                "resource_type": "JSON",
+                "many": false
+            }
+        }
     }, 
     "mode": "local_docker",
     "workspace_operation": true

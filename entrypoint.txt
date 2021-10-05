@@ -1,0 +1,1 @@
+Rscript /opt/software/wgcna.R -f {{expression_matrix}} {% if network_connectivity_param %} -b {{network_connectivity_param}} {% endif %} 
