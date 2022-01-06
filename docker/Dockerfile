@@ -1,4 +1,4 @@
-FROM r-base:3.6.1
+FROM r-base:4.1.2
 
 RUN apt-get update && \
   apt-get install -y libxml2-dev \
