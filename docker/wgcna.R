@@ -189,7 +189,7 @@ bwnet = blockwiseModules(
 # Colors denotes the label / module the gene was assigned.
 # Export as JSON
 modules_df = data.frame(group=bwnet$colors, gene=names(bwnet$colors))
-summary_df = aggregate(x=modules_df$gene, by=list(modules_df$group), FUN=paste, collapse=',')
+summary_df = aggregate(x=modules_df$gene, by=list(modules_df$group), FUN=list)
 q = apply(summary_df, 1, function(r){
             list(
                     module=r['Group.1'][[1]],
