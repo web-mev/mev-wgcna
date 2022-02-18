@@ -7,7 +7,7 @@
             "name": "Expressions:", 
             "required": true, 
             "spec": {
-                "attribute_type": "DataResource", 
+                "attribute_type": "VariableDataResource", 
                 "resource_types": ["MTX", "EXP_MTX"], 
                 "many": false
             }
