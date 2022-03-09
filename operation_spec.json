@@ -25,6 +25,7 @@
     }, 
     "outputs": {
         "module_results": {
+            "required": true,
             "spec": {
                 "attribute_type": "DataResource", 
                 "resource_type": "JSON",
@@ -32,6 +33,7 @@
             }
         },
         "network_connectivity_thresholds": {
+            "required": true,
             "spec": {
                 "attribute_type": "DataResource", 
                 "resource_type": "JSON",
