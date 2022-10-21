@@ -1,4 +1,0 @@
-{
-    "expression_matrix":"api.converters.data_resource.LocalDockerSingleDataResourceConverter",
-    "network_connectivity_param":"api.converters.basic_attributes.IntegerConverter"
-}
