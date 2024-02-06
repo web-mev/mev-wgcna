@@ -9,7 +9,6 @@ The outputs of this analysis include
 Note that WGCNA relies on a user-defined network connectivity parameter which dictates the clustering on gene co-expression and the resulting network topology. By default (if unspecified), we use a heuristic algorithm to estimate this parameter based on the location of the "elbow" of a plot (see below). Roughtly, the y-axis value of the plot is related to a fit to a "scale-free" network topology and the authors recommend that the $\beta$ value is chosen to be such that we select the elbow. Since this heuristic may not work well in all cases, the second output file provides data to create the plot below which can help users identify if the heuristic algorithm chose an appropriate threshold for their data. In most cases the heuristic selection works pretty well. However, if the selected point is not close to the elbow, the plot can be used to manually pick a threshold and re-run the analysis.
 
 ![Alt text](./elbow.svg)
-<img src="./elbow.svg">
 
 ---
 
