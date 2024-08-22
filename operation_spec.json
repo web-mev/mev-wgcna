@@ -6,7 +6,7 @@
             "description": "A table/matrix of normalized gene expression. Note that we cannot check that this table is normalized!",
             "name": "Expressions:", 
             "required": true, 
-            "converter": "api.converters.data_resource.LocalDockerSingleVariableDataResourceConverter",
+            "converter": "api.converters.data_resource.ECSSingleVariableDataResourceConverter",
             "spec": {
                 "attribute_type": "VariableDataResource", 
                 "resource_types": ["MTX", "EXP_MTX"], 
@@ -28,7 +28,7 @@
     "outputs": {
         "module_results": {
             "required": true,
-            "converter": "api.converters.data_resource.LocalDockerSingleDataResourceConverter",
+            "converter": "api.converters.data_resource.ECSSingleDataResourceConverter",
             "spec": {
                 "attribute_type": "DataResource", 
                 "resource_type": "JSON",
@@ -37,7 +37,7 @@
         },
         "network_connectivity_thresholds": {
             "required": true,
-            "converter": "api.converters.data_resource.LocalDockerSingleDataResourceConverter",
+            "converter": "api.converters.data_resource.ECSSingleDataResourceConverter",
             "spec": {
                 "attribute_type": "DataResource", 
                 "resource_type": "JSON",
@@ -45,6 +45,6 @@
             }
         }
     }, 
-    "mode": "local_docker",
+    "mode": "ecs",
     "workspace_operation": true
 }
